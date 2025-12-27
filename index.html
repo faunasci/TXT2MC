@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lightweight LLM Trainer & Tester</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --success-color: #10b981;
+            --border-color: #334155;
+            --input-bg: #0f172a;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--accent-color);
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        main {
+            flex: 1;
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            main {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-header {
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .card-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* File Upload Styling */
+        .file-drop-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .file-drop-area:hover, .file-drop-area.drag-over {
+            border-color: var(--accent-color);
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+
+        .file-drop-area input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-msg {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--success-color);
+            font-weight: 500;
+        }
+
+        /* Controls & Inputs */
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="number"], 
+        input[type="text"] {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+
+        input[type="number"]:focus, 
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.85rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .secondary-btn {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+        }
+
+        .secondary-btn:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Output Area */
+        .output-area {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            min-height: 150px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            position: relative;
+        }
+
+        .placeholder-text {
+            color: var(--text-secondary);
+            font-style: italic;
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            pointer-events: none;
+        }
+
+        /* Stats & Progress */
+        .stats-container {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background-color: var(--border-color);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .toast {
+            background-color: var(--card-bg);
+            border-left: 4px solid var(--accent-color);
+            padding: 1rem 1.5rem;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            animation: slideIn 0.3s ease forwards;
+            max-width: 300px;
+        }
+
+        .toast.error { border-left-color: #ef4444; }
+        .toast.success { border-left-color: var(--success-color); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(10px); }
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--accent-color);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Browser-Based LLM Trainer</h1>
+    <p>Markov Chain Text Generator • Train on local .txt files • No server required</p>
+</header>
+
+<main>
+    <!-- Section 1: Training -->
+    <section class="card">
+        <div class="card-header">
+            <h2>
+                <span>1. Data Ingestion & Training</span>
+            </h2>
+            <span class="badge">Step 1</span>
+        </div>
+        <div class="card-body">
+            
+            <div class="file-drop-area" id="dropArea">
+                <span class="file-msg" id="fileMsg">Drag & drop .txt file here or click to upload</span>
+                <input class="file-input" type="file" id="fileInput" accept=".txt">
+                <div class="file-info" id="fileInfo"></div>
+            </div>
+
+            <div class="control-group">
+                <label for="nGramSize">Context Window (N-Gram Size)</label>
+                <input type="number" id="nGramSize" value="2" min="1" max="5">
+                <small style="color: var(--text-secondary); font-size: 0.75rem;">Higher = more coherent but requires more data.</small>
+            </div>
+
+            <div class="stats-container">
+                <div class="stat-row">
+                    <span>Status:</span>
+                    <span id="trainStatus">Idle</span>
+                </div>
+                <div class="stat-row">
+                    <span>Vocabulary Size:</span>
+                    <span id="vocabSize">0 words</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="trainProgress"></div>
+                </div>
+            </div>
+
+            <button id="trainBtn" disabled>Train Model</button>
+        </div>
+    </section>
+
+    <!-- Section 2: Testing -->
+    <section class="card">
+        <div class="card-header">
+            <h2>
+                <span>2. Model Playground</span>
+            </h2>
+            <span class="badge">Step 2</span>
+        </div>
+        <div class="card-body">
+            
+            <div class="control-group">
+                <label for="promptInput">Prompt Text</label>
+                <input type="text" id="promptInput" placeholder="Start typing a sentence..." autocomplete="off">
+            </div>
+
+            <div class="control-group">
+                <label for="genLength">Max Words to Generate</label>
+                <input type="number" id="genLength" value="50" min="10" max="500">
+            </div>
+
+            <button id="generateBtn" class="secondary-btn" disabled>Generate Text</button>
+
+            <label>Output</label>
+            <div class="output-area" id="outputArea">
+                <div class="placeholder-text">Trained text will appear here...</div>
+            </div>
+            
+            <button id="clearOutputBtn" style="background-color: #334155; padding: 0.5rem; font-size: 0.85rem;">Clear Output</button>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <p>Uses a client-side Word-Level Markov Chain. Not a deep neural network, but a fast statistical approximation.</p>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+    // --- State Management ---
+    const state = {
+        rawText: "",
+        words: [],
+        model: {}, // Markov Chain Map: "word1 word2" -> ["next_word_a", "next_word_b"]
+        nGram: 2,
+        isTrained: false
+    };
+
+    // --- DOM Elements ---
+    const elements = {
+        fileInput: document.getElementById('fileInput'),
+        dropArea: document.getElementById('dropArea'),
+        fileMsg: document.getElementById('fileMsg'),
+        fileInfo: document.getElementById('fileInfo'),
+        nGramInput: document.getElementById('nGramSize'),
+        trainBtn: document.getElementById('trainBtn'),
+        trainStatus: document.getElementById('trainStatus'),
+        vocabSize: document.getElementById('vocabSize'),
+        trainProgress: document.getElementById('trainProgress'),
+        promptInput: document.getElementById('promptInput'),
+        genLength: document.getElementById('genLength'),
+        generateBtn: document.getElementById('generateBtn'),
+        outputArea: document.getElementById('outputArea'),
+        clearOutputBtn: document.getElementById('clearOutputBtn'),
+        toastContainer: document.getElementById('toastContainer')
+    };
+
+    // --- Event Listeners ---
+    elements.fileInput.addEventListener('change', handleFileSelect);
+    elements.trainBtn.addEventListener('click', startTraining);
+    elements.generateBtn.addEventListener('click', generateText);
+    elements.clearOutputBtn.addEventListener('click', () => {
+        elements.outputArea.innerHTML = '<div class="placeholder-text">Trained text will appear here...</div>';
+        elements.promptInput.value = "";
+    });
+
+    // Drag and Drop Effects
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        elements.dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        elements.dropArea.addEventListener(eventName, () => elements.dropArea.classList.add('drag-over'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        elements.dropArea.addEventListener(eventName, () => elements.dropArea.classList.remove('drag-over'), false);
+    });
+
+    elements.dropArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        elements.fileInput.files = files; // Update input files
+        handleFileSelect();
+    }
+
+    // --- Logic: File Handling ---
+    function handleFileSelect() {
+        const file = elements.fileInput.files[0];
+        if (!file) return;
+
+        if (file.type !== "text/plain") {
+            showToast("Please upload a valid .txt file.", "error");
+            elements.fileInput.value = "";
+            return;
+        }
+
+        elements.fileMsg.style.display = "none";
+        elements.fileInfo.style.display = "block";
+        elements.fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        
+        // Read file
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            state.rawText = e.target.result;
+            elements.trainBtn.disabled = false;
+            showToast("File loaded successfully. Ready to train.", "success");
+        };
+        reader.onerror = function() {
+            showToast("Error reading file.", "error");
+        };
+        reader.readAsText(file);
+    }
+
+    // --- Logic: Training (Markov Chain) ---
+    function startTraining() {
+        if (!state.rawText) return;
+
+        // Reset UI
+        state.isTrained = false;
+        elements.generateBtn.disabled = true;
+        elements.trainStatus.textContent = "Processing...";
+        elements.trainProgress.style.width = "0%";
+        elements.model = {};
+
+        // Allow UI to update before heavy calculation
+        setTimeout(() => {
+            try {
+                // 1. Preprocess Text
+                // Normalize slightly, keep punctuation for style
+                const cleanText = state.rawText.replace(/(\r\n|\n|\r)/gm, " ");
+                state.words = cleanText.split(/\s+/).filter(w => w.length > 0);
+
+                if (state.words.length < 50) {
+                    showToast("Text is too short to train effectively.", "error");
+                    elements.trainStatus.textContent = "Error";
+                    return;
+                }
+
+                state.nGram = parseInt(elements.nGramInput.value) || 2;
+                
+                // 2. Build Model
+                // For an N-gram model, the key is the previous (N-1) words.
+                // But for simplicity in implementation, if nGram=2, we look at 1 word to predict next.
+                // If nGram=3, we look at 2 words.
+                const contextSize = Math.max(1, state.nGram - 1);
+                
+                const totalWords = state.words.length;
+                
+                for (let i = 0; i < totalWords - contextSize; i++) {
+                    // Create context key (e.g., "The quick")
+                    const contextParts = [];
+                    for (let j = 0; j < contextSize; j++) {
+                        contextParts.push(state.words[i + j]);
+                    }
+                    const key = contextParts.join(' ');
+                    
+                    // Value is the next word
+                    const nextWord = state.words[i + contextSize];
+
+                    if (!state.model[key]) {
+                        state.model[key] = [];
+                    }
+                    state.model[key].push(nextWord);
+
+                    // Update progress bar roughly every 5%
+                    if (i % Math.floor(totalWords / 20) === 0) {
+                        elements.trainProgress.style.width = `${(i / totalWords) * 100}%`;
+                    }
+                }
+
+                // Finish
+                elements.trainProgress.style.width = "100%";
+                elements.vocabSize.textContent = `${Object.keys(state.model).length} unique chains`;
+                elements.trainStatus.textContent = "Model Trained";
+                elements.trainStatus.style.color = "var(--success-color)";
+                elements.generateBtn.disabled = false;
+                state.isTrained = true;
+                
+                // Pre-fill prompt with a random start if empty
+                const randomStartIndex = Math.floor(Math.random() * (totalWords - contextSize));
+                if(contextSize === 1) {
+                    elements.promptInput.value = state.words[randomStartIndex];
+                } else {
+                    elements.promptInput.value = state.words.slice(randomStartIndex, randomStartIndex + contextSize).join(' ');
+                }
+
+                showToast("Training complete! Model ready.", "success");
+
+            } catch (err) {
+                console.error(err);
+                showToast("An error occurred during training.", "error");
+                elements.trainStatus.textContent = "Failed";
+            }
+        }, 100);
+    }
+
+    // --- Logic: Generation ---
+    function generateText() {
+        if (!state.isTrained) {
+            showToast("Please train the model first.", "error");
+            return;
+        }
+
+        let prompt = elements.promptInput.value.trim();
+        const length = parseInt(elements.genLength.value) || 50;
+        
+        if (!prompt) {
+            // If no prompt, try to find a key that exists or pick random word
+            const keys = Object.keys(state.model);
+            if (keys.length === 0) return;
+            prompt = keys[Math.floor(Math.random() * keys.length)];
+        }
+
+        // Split prompt into words to find the last context
+        let currentWords = prompt.split(/\s+/);
+        let result = [...currentWords];
+
+        const contextSize = Math.max(1, state.nGram - 1);
+
+        for (let i = 0; i < length; i++) {
+            // Get last N words as context
+            // If we don't have enough words yet (start of generation), just use what we have
+            const startIndex = Math.max(0, result.length - contextSize);
+            const currentContext = result.slice(startIndex, result.length).join(' ');
+
+            const possibleNextWords = state.model[currentContext];
+
+            if (possibleNextWords && possibleNextWords.length > 0) {
+                // Pick a random word from the possibilities
+                const nextWord = possibleNextWords[Math.floor(Math.random() * possibleNextWords.length)];
+                result.push(nextWord);
+            } else {
+                // Dead end: chain broken. Try to restart randomly or stop.
+                // For better UX in this simple tool, we'll stop or append a random word from vocabulary if we really want to hit length.
+                // Let's just break to keep it sane.
+                break;
+            }
+        }
+
+        // Render output
+        elements.outputArea.innerText = result.join(' ');
+    }
+
+    // --- Utilities: Toast Notification ---
+    function showToast(message, type = "info") {
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+        toast.innerText = message;
+        
+        elements.toastContainer.appendChild(toast);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.style.animation = "fadeOut 0.3s ease forwards";
+            toast.addEventListener("animationend", () => {
+                toast.remove();
+            });
+        }, 3000);
+    }
+
+</script>
+
+</body>
+</html>

@@ -1,9 +1,12 @@
-# TXT2MC - Browser-Based Markov Chain Trainer
+> **Vibe Code Alert**
+>
+> Vibe-coded, This Code is ephemeral, no support or updates.
 
 [(Português)](#português) | [(Français)](#français)
 
 ## English
 
+# TXT2MC - Browser-Based Markov Chain Trainer
 ### Description
 **TXT2MC** is a lightweight, client-side Markov Chain text generator. It allows you to train a statistical model directly in your browser using local `.txt` files. No server, no APIs, and no data leaves your machine.
 
